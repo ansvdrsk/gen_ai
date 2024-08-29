@@ -1,0 +1,187 @@
+:root {
+    --oracle-red: #C74634;
+    --oracle-dark-blue: #1A4F8B;
+    --oracle-light-blue: #3A75C4;
+    --oracle-gray: #312D2A;
+    --oracle-light-gray: #F0F0F0;
+}
+
+body {
+    font-family: 'Open Sans', sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background-color: var(--oracle-light-gray);
+    color: var(--oracle-gray);
+}
+
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+header {
+    background-color: var(--oracle-gray);
+    color: white;
+    padding: 1rem 0;
+}
+
+header .container {
+    display: flex;
+    align-items: center;
+}
+
+header .logo {
+    height: 40px;
+    margin-right: 1rem;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+main {
+    padding: 2rem 0;
+}
+
+section {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+h2 {
+    color: var(--oracle-dark-blue);
+    margin-top: 0;
+}
+
+.upload-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+input[type="file"] {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.btn-primary {
+    background-color: var(--oracle-dark-blue);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: var(--oracle-light-blue);
+}
+
+#upload-status {
+    margin-top: 1rem;
+    font-weight: bold;
+}
+
+.parameter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.parameter label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+input[type="number"],
+select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+/* Chat Styles */
+.chat-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.chat-messages {
+    height: 400px;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.message {
+    max-width: 70%;
+    margin-bottom: 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: 18px;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+.user-message {
+    background-color: var(--oracle-light-blue);
+    color: white;
+    align-self: flex-end;
+    margin-left: auto;
+}
+
+.ai-message {
+    background-color: var(--oracle-light-gray);
+    color: var(--oracle-gray);
+    align-self: flex-start;
+}
+
+.message-info {
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-bottom: 0.2rem;
+    color: var(--oracle-dark-blue);
+}
+
+.user-message .message-info {
+    color: white;
+}
+
+.chat-input {
+    display: flex;
+    padding: 1rem;
+    background-color: var(--oracle-light-gray);
+}
+
+#user-message {
+    flex-grow: 1;
+    padding: 0.5rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    font-size: 1rem;
+    margin-right: 1rem;
+}
+
+.chat-input .btn-primary {
+    border-radius: 20px;
+}
+
+@media (max-width: 768px) {
+    .parameter-grid {
+        grid-template-columns: 1fr;
+    }
+}
