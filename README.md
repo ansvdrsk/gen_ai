@@ -9,3 +9,4 @@ The template file `base.html` is used as a shell by the other three HTML templat
 After installing all dependencies, run the app by entering its folder and typing:
 
 `$ python routes.py`
+# gen_ai
