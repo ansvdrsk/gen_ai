@@ -4,6 +4,7 @@
     --oracle-light-blue: #3A75C4;
     --oracle-gray: #312D2A;
     --oracle-light-gray: #F0F0F0;
+    --loader-blue: #1A4F8B;
 }
 
 body {
@@ -184,4 +185,48 @@ select {
     .parameter-grid {
         grid-template-columns: 1fr;
     }
+}
+
+
+.chat-messages {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 10px;
+    height: 400px;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+
+.typing-indicator {
+    position: absolute;
+    left: 10px; 
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    padding: 6px 10px;
+    border-radius: 20px;
+    transition: top 0.2s ease-out; 
+}
+
+
+.typing-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #1A4F8B;
+    border-radius: 50%;
+    animation: blink 1.5s infinite;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink {
+    0% { opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { opacity: 0.3; }
 }

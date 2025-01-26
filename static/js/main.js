@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', function() {
     setupModelSelection();
 });
 
+
+document.addEventListener('DOMContentLoaded', scrollToBottom);
+
 function setupModelSelection() {
     const modelSelect = document.getElementById('modelSelect');
     const maxTokensInput = document.getElementById('maxTokens');
@@ -43,16 +46,8 @@ function setupModelSelection() {
 
 function fetchModels() {
     fetch('/list-models')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            if (data.error) {
-                throw new Error(data.error);
-            }
             const modelSelect = document.getElementById('modelSelect');
             modelSelect.innerHTML = ''; 
 
@@ -108,12 +103,14 @@ function uploadFiles() {
     });
 }
 
+
+document.addEventListener('DOMContentLoaded', scrollToBottom);
+
 function setupChat() {
     const chatForm = document.getElementById('chat-form');
     const userInput = document.getElementById('user-message');
-    const chatMessages = document.getElementById('chat-messages');
 
-    chatForm.addEventListener('submit', function(event) {
+    chatForm.addEventListener('submit', function (event) {
         event.preventDefault();
         const message = userInput.value.trim();
         if (message) {
@@ -126,6 +123,7 @@ function setupChat() {
 
 function appendMessage(sender, text, className) {
     const chatMessages = document.getElementById('chat-messages');
+
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', className);
 
@@ -139,17 +137,71 @@ function appendMessage(sender, text, className) {
 
     messageDiv.appendChild(infoDiv);
     messageDiv.appendChild(textDiv);
-
     chatMessages.appendChild(messageDiv);
+
+    moveTypingIndicator(); 
+    scrollToBottom();
+}
+
+function showTypingIndicator() {
+    let chatMessages = document.getElementById('chat-messages');
+    let typingIndicator = document.getElementById('typing-indicator');
+
+    
+    if (!typingIndicator) {
+        typingIndicator = document.createElement('div');
+        typingIndicator.id = "typing-indicator";
+        typingIndicator.classList.add('typing-indicator');
+        typingIndicator.innerHTML = `
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+        `;
+        chatMessages.appendChild(typingIndicator);
+    }
+
+  
+    typingIndicator.style.bottom = '18px'; //  Fixed bottom-left when first appearing
+    typingIndicator.style.left = '10px'; 
+
+    typingIndicator.style.display = 'flex';
+    moveTypingIndicator(); 
+}
+
+function hideTypingIndicator() {
+    let typingIndicator = document.getElementById('typing-indicator');
+    if (typingIndicator) {
+        typingIndicator.style.display = 'none';
+    }
+}
+
+function moveTypingIndicator() {
+    let chatMessages = document.getElementById('chat-messages');
+    let typingIndicator = document.getElementById('typing-indicator');
+    let lastMessage = chatMessages.lastElementChild;
+
+    if (typingIndicator && lastMessage) {
+        let lastMessageBottom = lastMessage.offsetTop + lastMessage.offsetHeight;
+        typingIndicator.style.top = lastMessageBottom + 'px'; 
+    }
+
+    scrollToBottom(); 
+}
+
+function scrollToBottom() {
+    const chatMessages = document.getElementById('chat-messages');
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function botResponse(userMessage) {
+    showTypingIndicator(); 
+
     const selectedModel = document.getElementById('modelSelect');
     const selectedModelId = selectedModel.value;
     const selectedModelDisplayName = selectedModel.options[selectedModel.selectedIndex].text;
 
     if (!selectedModelId) {
+        hideTypingIndicator();
         appendMessage('AI', "Please select a model before sending a message.", 'ai-message');
         return;
     }
@@ -168,22 +220,30 @@ function botResponse(userMessage) {
 
     fetch('/query', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(params)
     })
     .then(response => response.json())
     .then(data => {
+        hideTypingIndicator();
+
         if (data.error) {
             appendMessage('AI', `Error: ${data.error}`, 'ai-message');
         } else {
             appendMessage('AI', data.response, 'ai-message');
             conversationId = data.conversation_id;
         }
+
+        moveTypingIndicator(); 
     })
     .catch(error => {
         console.error('Error:', error);
+        hideTypingIndicator();
         appendMessage('AI', "An error occurred while processing your request.", 'ai-message');
     });
+
+    scrollToBottom(); 
 }
+
+
+document.addEventListener('DOMContentLoaded', scrollToBottom);
