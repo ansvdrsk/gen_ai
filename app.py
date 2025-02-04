@@ -42,6 +42,8 @@ Session(app)
 
 default_config = oci.config.from_file(app.config['OCI_CONFIG_FILE'], app.config['OCI_DEFAULT_PROFILE'])
 chicago_config = oci.config.from_file(app.config['OCI_CONFIG_FILE'], app.config['OCI_CHICAGO_PROFILE'])
+object_storage_client = oci.object_storage.ObjectStorageClient(chicago_config)
+
 endpoint =  app.config['OCI_ENDPOINT']
 
 opensearch_client = OpenSearch(
@@ -61,7 +63,7 @@ redis_client = redis.StrictRedis(
 
 
 
-object_storage_client = oci.object_storage.ObjectStorageClient(default_config)
+
 generative_ai_client = oci.generative_ai.GenerativeAiClient(chicago_config)
 generative_ai_inference_client = oci.generative_ai_inference.GenerativeAiInferenceClient(
     config=chicago_config, 
@@ -296,13 +298,62 @@ def process_file(file_path, file_content, filename):
     
     return filename
 
-def upload_to_oci_bucket(file_content, object_name):
-    object_storage_client.put_object(
-        namespace_name=app.config['OCI_NAMESPACE'],
-        bucket_name=app.config['OCI_BUCKET_NAME'],
-        object_name=object_name,
-        put_object_body=file_content
-    )
+
+
+def upload_to_oci_bucket(file, object_name):
+ 
+    try:
+        print(f"Received file: {file.filename}, Content-Type: {file.content_type}")
+
+        file_content = file.read()
+        if not file_content:
+            print("Error: File content is empty")
+            return {"status": "error", "message": "File content is empty"}
+
+        
+        response = object_storage_client.put_object(
+            namespace_name=app.config['OCI_NAMESPACE'],
+            bucket_name=app.config['OCI_BUCKET_NAME'],
+            object_name=object_name,
+            put_object_body=file_content
+        )
+
+        if response.status == 200:
+            print(f"Upload successful: {response.status} | Object: {object_name}")
+
+            
+            uploaded_files = list_objects_in_bucket()
+            if object_name in uploaded_files:
+                print(f"File {object_name} is confirmed in the bucket.")
+                return {"status": "success", "object_name": object_name, "file_content": file_content}
+            else:
+                print(f"Error: File {object_name} is NOT in the bucket after upload!")
+                return {"status": "error", "message": "File upload verification failed"}
+
+        else:
+            print(f"Upload failed with status {response.status}")
+            return {"status": "error", "message": f"Upload failed with status {response.status}"}
+
+    except Exception as e:
+        print(f"Upload failed: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+def list_objects_in_bucket():
+    """
+    Lists all objects currently in the OCI bucket.
+    """
+    try:
+        objects = object_storage_client.list_objects(
+            namespace_name=app.config['OCI_NAMESPACE'],
+            bucket_name=app.config['OCI_BUCKET_NAME']
+        )
+
+        uploaded_files = [obj.name for obj in objects.data.objects]
+        print(f"Files currently in the bucket: {uploaded_files}")
+        return uploaded_files
+    except Exception as e:
+        print(f"Error retrieving bucket contents: {str(e)}")
+        return []
 
 @app.route('/upload-to-oci', methods=['POST'])
 def upload_to_oci():
@@ -310,49 +361,70 @@ def upload_to_oci():
         return jsonify({"error": "No file part"}), 400
 
     files = request.files.getlist('files[]')
-    if not files or all(file.filename == '' for file in files):
+    if not files or all(file.filename.strip() == '' for file in files):
         return jsonify({"error": "No selected file"}), 400
 
+    processed_files = []
+    unsupported_files = []
+
     try:
-        processed_files = []
         for file in files:
             filename = secure_filename(file.filename)
-            file_content = file.read()
 
-           
+            if not filename.lower().endswith(('.pdf', '.docx')):
+                unsupported_files.append(filename)
+                continue  
+
             object_name = f"uploads/{filename}"
-            object_storage_client.put_object(
-                namespace_name=app.config['OCI_NAMESPACE'],
-                bucket_name=app.config['OCI_BUCKET_NAME'],
-                object_name=object_name,
-                put_object_body=file_content
-            )
+            upload_result = upload_to_oci_bucket(file, object_name)
 
-           
+            if upload_result["status"] != "success":
+                app.logger.error(f"Failed to upload {filename} to OCI: {upload_result['message']}")
+                continue
+
+            app.logger.info(f"Uploaded {filename} to OCI bucket")
+
+            file_content = upload_result["file_content"]
+
             if filename.lower().endswith('.pdf'):
-                content = extract_text_from_pdf(file_content)
+                content = extract_text_from_pdf(io.BytesIO(file_content))
             elif filename.lower().endswith('.docx'):
                 content = extract_text_from_docx(file_content)
-            else:
-                continue  
+
+            if not content.strip():
+                app.logger.warning(f"No text extracted from {filename}, skipping indexing")
+                continue
+
+            print(f"Extracted content from {filename}: {content[:500]}")
 
             chunks = chunk_text(content)
             chunk_embeddings = generate_embeddings_for_chunks(chunks)
             aggregated_embedding = aggregate_embeddings(chunk_embeddings)
 
-            # Index in OpenSearch
-            doc_id = filename
-            document_body = {
-                "content": content,
-                "passage_embedding": aggregated_embedding
-            }
-            opensearch_client.index(index="documents", id=doc_id, body=document_body)
+            try:
+                doc_id = filename
+                document_body = {
+                    "content": content,
+                    "passage_embedding": aggregated_embedding
+                }
+                response = opensearch_client.index(index="documents", id=doc_id, body=document_body)
+
+                if response.get('result') not in ['created', 'updated']: 
+                    app.logger.error(f"OpenSearch indexing issue for {filename} - Response: {response}")
+                    continue
+
+                app.logger.info(f"Indexed {filename} in OpenSearch")
+
+            except Exception as os_error:
+                app.logger.error(f"Failed to index {filename} in OpenSearch: {os_error}")
+                continue
 
             processed_files.append(filename)
 
         return jsonify({
             "status": f"Processed {len(processed_files)} files successfully",
-            "processed_files": processed_files
+            "processed_files": processed_files,
+            "unsupported_files": unsupported_files
         })
 
     except Exception as e:
